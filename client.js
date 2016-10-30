@@ -38,17 +38,27 @@ Client = function(){
 		console.log('マッチ情報');
 
 		if(msg['match']){
+
 		    console.log(' -> マッチ相手が見つかりました！');
 		    console.log(' -> ステージ: '+msg['stage']);
+		    console.log(' -> 自分の情報');
+		    console.log('    名前: '+msg['user']['name']);
+		    console.log('    レート: '+msg['user']['rate']);
+		    console.log(' -> 相手の情報');
+		    console.log('    名前: '+msg['matched']['name']);
+		    console.log('    レート: '+msg['matched']['rate']);
+
 		    _this.stage = msg['stage'];
 		    _this.stepCount = 0;
 		    _this.step();
+		}else{
+		    console.log(' -> 認証失敗');
+		    process.exit();
 		}
 
 	    }else if('step' in Object(msg)){
 
 		console.log('\n相手 ('+msg['step_count']+') -> '+msg['step']);
-		console.log('> ')
 
 	    }else if('fin' in Object(msg)){
 
@@ -59,6 +69,9 @@ Client = function(){
 		}else{
 		    console.log('敗北...');
 		}
+
+		console.log('レートが'+msg['user']['rate']+'になりました');
+		process.exit();
 	    }
 	});
 
@@ -137,10 +150,14 @@ Client.prototype.step = function(){
 
     this.i = this.readLine.createInterface(process.stdin, process.stdout, null);
     this.i.question('ステップ ?\n> ', function(answer){
+
 	_this.conn.sendUTF(_this._step(answer));
 	_this.stepCount ++;
 	_this.i.close();
-	_this.step();
+
+	if(_this.stepCount < _this.stage.length){
+	    _this.step();
+	}
     });
 };
 
