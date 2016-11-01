@@ -139,7 +139,39 @@ Client.prototype.subscribe = function(){
 }
 
 Client.prototype.match = function(){
+
+    var _this = this;
+
+    this.readLineSync = require('readline-sync');
+    this.mode = this.readLineSync.question(
+	'AIとマッチングするときは ai と入力してください\n'+
+	    'すでにマッチングを待機しているプレイヤーがいたらそちらが優先されます\n> ');
+    
     this.conn.sendUTF(this._match());
+
+    if(this.mode == 'ai'){
+	
+	var request = require('request');
+	var options = {
+	    uri: 'http://localhost:3000/ais',
+	    method: 'POST',
+	    json: true,
+	    body: {token: process.env.AI_TOKEN}
+	};
+	
+	request.post(options, function(error, response, body){
+	    if(!error && response.statusCode == 200){
+		console.log('AI対戦リクエストを送信しました');
+	    }else{
+		console.log('エラーです');
+		console.log(response);
+		console.log(error);
+		console.log(body);
+	    }
+	});
+    }else{
+	console.log('対戦リクエストを受け付けています...');
+    }
 }
 
 Client.prototype.step = function(){
@@ -162,5 +194,5 @@ Client.prototype.step = function(){
 };
 
 client = new Client();
-client.login(); //sync function
+client.login();
 client.connect();
