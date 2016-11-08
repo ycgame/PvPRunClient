@@ -1,15 +1,22 @@
-
 Client = function(){
-
+    
     var WebSocket = require('websocket').client;
     var _this = this;
+
+    if(process.argv[2] != undefined){
+	if(process.argv[2] == 'ai'){
+	    this.vsAi = 'ai';
+	}else if(process.argv[2] == 'cancel'){
+	    this.cancelMode = 'cancel';
+	}
+    }
 
     this.readLine = require('readline');
 
     this.client = new WebSocket();
     
     this.client.on('connectFailed', function(){
-	console.log(' * 接続失敗 * ');
+	console.log('接続失敗...');
     });
 
     this.client.on('connect', function(conn){
@@ -22,8 +29,14 @@ Client = function(){
 
 	    data = JSON.parse(_msg.utf8Data);
 	    msg  = data['message'];
+	    
+	    if(!('type' in Object(msg))){
+		return;
+	    }
+	    
+	    type = msg['type'];
 
-	    if('auth' in Object(msg)){
+	    if(type == 'auth'){
 
 		console.log('認証情報');
 
@@ -33,34 +46,28 @@ Client = function(){
 		    console.log(' -> 認証失敗');
 		}
 
-	    }else if('match' in Object(msg)){
+	    }else if(type == 'match'){
 
 		console.log('マッチ情報');
 
-		if(msg['match']){
+		console.log(' -> マッチ相手が見つかりました！');
+		console.log(' -> ステージ: '+msg['stage']);
+		console.log(' -> 自分の情報');
+		console.log('    名前: '+msg['user']['name']);
+		console.log('    レート: '+msg['user']['rate']);
+		console.log(' -> 相手の情報');
+		console.log('    名前: '+msg['matched']['name']);
+		console.log('    レート: '+msg['matched']['rate']);
 
-		    console.log(' -> マッチ相手が見つかりました！');
-		    console.log(' -> ステージ: '+msg['stage']);
-		    console.log(' -> 自分の情報');
-		    console.log('    名前: '+msg['user']['name']);
-		    console.log('    レート: '+msg['user']['rate']);
-		    console.log(' -> 相手の情報');
-		    console.log('    名前: '+msg['matched']['name']);
-		    console.log('    レート: '+msg['matched']['rate']);
+		_this.stage = msg['stage'];
+		_this.stepCount = 0;
+		_this.step();
 
-		    _this.stage = msg['stage'];
-		    _this.stepCount = 0;
-		    _this.step();
-		}else{
-		    console.log(' -> 認証失敗');
-		    process.exit();
-		}
-
-	    }else if('step' in Object(msg)){
+	    }else if(type == 'step'){
 
 		console.log('\n相手 ('+msg['step_count']+') -> '+msg['step']);
 
-	    }else if('fin' in Object(msg)){
+	    }else if(type == 'fin'){
 
 		console.log('\nゲーム終了！');
 
@@ -122,6 +129,16 @@ Client.prototype._step = function(i){
     return JSON.stringify(command);
 }
 
+Client.prototype._cancel = function(i){
+    data = {}
+    data['action'] = 'cancel';
+    command = {}
+    command['command'] = 'message';
+    command['identifier'] = this._channel();
+    command['data'] = JSON.stringify(data);
+    return JSON.stringify(command);
+}
+
 Client.prototype.login = function(){
     
     this.readLineSync = require('readline-sync');
@@ -138,18 +155,17 @@ Client.prototype.subscribe = function(){
     this.conn.sendUTF(this._subscribe());
 }
 
+Client.prototype.cancel = function(){
+    this.conn.sendUTF(this._cancel());
+}
+
 Client.prototype.match = function(){
 
     var _this = this;
-
-    this.readLineSync = require('readline-sync');
-    this.mode = this.readLineSync.question(
-	'AIとマッチングするときは ai と入力してください\n'+
-	    'すでにマッチングを待機しているプレイヤーがいたらそちらが優先されます\n> ');
     
     this.conn.sendUTF(this._match());
 
-    if(this.mode == 'ai'){
+    if(this.vsAi == 'ai'){
 	
 	var request = require('request');
 	var options = {
@@ -169,6 +185,16 @@ Client.prototype.match = function(){
 		console.log(body);
 	    }
 	});
+    }else if(this.cancelMode == 'cancel'){
+
+	console.log('3秒後にマッチングをキャンセルします');
+
+	setTimeout(function(){
+	    _this.cancel();
+	    console.log('キャンセルしました');
+	    process.exit();
+	}, 3000);
+	
     }else{
 	console.log('対戦リクエストを受け付けています...');
     }
@@ -193,6 +219,4 @@ Client.prototype.step = function(){
     });
 };
 
-client = new Client();
-client.login();
-client.connect();
+module.exports = Client;
