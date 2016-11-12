@@ -44,6 +44,7 @@ Client = function(){
 		    console.log(' -> 認証成功');
 		}else{
 		    console.log(' -> 認証失敗');
+		    process.exit();
 		}
 
 	    }else if(type == 'match'){
@@ -77,6 +78,7 @@ Client = function(){
 		    console.log('敗北...');
 		}
 
+		console.log('勝因 or 敗因: '+msg['msg']);
 		console.log('レートが'+msg['user']['rate']+'になりました');
 		process.exit();
 	    }
